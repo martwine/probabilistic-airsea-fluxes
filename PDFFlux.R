@@ -104,51 +104,71 @@ repeatlhc<-function(compound, dist_n, lhc_n, repeatlhc_n, rdwind, rdsal, rdtemp,
 
 calculate_pdf<-function(filename,compound,dist_n=10000,lhc_n=1000,repeatlhc_n=100,distlist=defaultdistlist){
 	#load data in 
-	dataset<-read.csv(filename, sep="\t", header=TRUE)
+	dataset<-read.csv(filename, header=TRUE)
 	attach(dataset)
 	
 
 	#fit distributions to each data type and randomly sample them dist_n times 
 	winds<-na.omit(WindSpeed)
 	attributes(winds)<-NULL
-	dwind<-fitdistr(winds,distlist$WindSPeed)
-	rdwind<-ifelse(distlist$WindSpeed=="normal",
-			getndist_within_bounds(mean=dwind[[1]][[1]],sd=dwind[[1]][[2]],n=dist_n),
-			getlndist_within_bounds(meanlog=dwind[[1]][[1]],sdlog=dwind[[1]][[2]],n=dist_n)
-			)
+	dwind<-fitdistr(winds,distlist$WindSpeed)
+	if(distlist$WindSpeed=="normal")
+		{
+		rdwind<-getndist_within_bounds(mean=dwind[[1]][[1]],sd=dwind[[1]][[2]],n=dist_n)
+		}
+	else
+		{
+		rdwind<-getlndist_within_bounds(meanlog=dwind[[1]][[1]],sdlog=dwind[[1]][[2]],n=dist_n)
+		}
 
 	sal<-na.omit(Salinity)
 	attributes(sal)<-NULL
 	dsal<-fitdistr(sal,distlist$Salinity)
-	rdsal<-ifelse(distlist$Salinity=="normal",
-			getndist_within_bounds(mean=dsal[[1]][[1]],sd=dsal[[1]][[2]],n=dist_n),
-			getlndist_within_bounds(meanlog=dsal[[1]][[1]],sdlog=dsal[[1]][[2]],n=dist_n)
-			)
+	if(distlist$Salinity=="normal")
+			{
+			rdsal<-getndist_within_bounds(mean=dsal[[1]][[1]],sd=dsal[[1]][[2]],n=dist_n)
+			}
+	else
+			{			
+			rdsal<-getlndist_within_bounds(meanlog=dsal[[1]][[1]],sdlog=dsal[[1]][[2]],n=dist_n)
+			}
 
-	temp<-na.omit(Temp)
+	temp<-na.omit(Temperature)
 	attributes(temp)<-NULL
 	dtemp<-fitdistr(temp,distlist$Temperature)
-	rdtemp<-ifelse(distlist$Temperature=="normal",
-		getndist_within_bounds(mean=dtemp[[1]][[1]],sd=dtemp[[1]][[2]],n=dist_n),
-		getlndist_within_bounds(meanlog=dtemp[[1]][[1]],sdlog=dtemp[[1]][[2]],n=dist_n)
-		)
+	if(distlist$Temperature=="normal")	
+		{
+		rdtemp<-getndist_within_bounds(mean=dtemp[[1]][[1]],sd=dtemp[[1]][[2]],n=dist_n)
+		}
+	else
+		{
+		rdtemp<-getlndist_within_bounds(meanlog=dtemp[[1]][[1]],sdlog=dtemp[[1]][[2]],n=dist_n)
+		}
 
 
 	cair<-na.omit(C_air)
 	attributes(cair)<-NULL
 	dcair<-fitdistr(cair,distlist$C_air)	
-	rdcair<-ifelse(distlist$C_air=="normal",
-		getndist_within_bounds(mean=dcair[[1]][[1]],sd=dcair[[1]][[2]],n=dist_n),
-		getlndist_within_bounds(meanlog=dcair[[1]][[1]],sdlog=dcair[[1]][[2]],n=dist_n)
-		)
+	if(distlist$C_air=="normal")
+		{
+		rdcair<-getndist_within_bounds(mean=dcair[[1]][[1]],sd=dcair[[1]][[2]],n=dist_n)
+		}
+	else
+		{
+		rdcair<-getlndist_within_bounds(meanlog=dcair[[1]][[1]],sdlog=dcair[[1]][[2]],n=dist_n)
+		}
 
 	cwater<-na.omit(C_water)
 	attributes(cwater)<-NULL
 	dcwater<-fitdistr(cwater,distlist$C_water)
-	rdcwater<-ifelse(distlist$C_water=="normal",
-		getndist_within_bounds(mean=dcwater[[1]][[1]],sd=dcwater[[1]][[2]],n=dist_n),
-		getlndist_within_bounds(meanlog=dcwater[[1]][[1]],sdlog=dcwater[[1]][[2]],n=dist_n)
-		)
+	if(distlist$C_water=="normal")
+		{
+		rdcwater<-getndist_within_bounds(mean=dcwater[[1]][[1]],sd=dcwater[[1]][[2]],n=dist_n)
+		}
+	else
+		{
+		rdcwater<-getlndist_within_bounds(meanlog=dcwater[[1]][[1]],sdlog=dcwater[[1]][[2]],n=dist_n)
+		}
 
 
 	
