@@ -66,26 +66,19 @@ getlndist_within_bounds<-function(meanlog,sdlog,conf=1.0,n=1000){
 	y
 }
 
+randomsamplelhc<-function(compound, dist_n, lhc_n, rdwind, rdsal, rdtemp, rdcair, rdcwater){
+	#from randomly sampled distributions of variables subset a latn hypercube and calculate air-sea fluxes for each combination of variables
 
-randomsamplelhc<-function(compound){
-	#randomly sample the distributions, then create a latin hypercube sample
-	rdwind<-rlnorm(n=100000,meanlog=dwind[[1]][[1]],sdlog=dwind[[1]][[2]])
-	rdsal<-rnorm(100000,mean=dsal[[1]][[1]],sd=dsal[[1]][[2]])
-	rdtemp<-rnorm(100000,mean=dtemp[[1]][[1]],sd=dtemp[[1]][[2]])
-	ifelse(compound=="CHBr3",gasd<-dgas,gasd<-dgas2)
-	rdgas<-rlnorm(n=100000,meanlog=gasd[[1]][[1]],sdlog=gasd[[1]][[2]])
-	ifelse(compound=="CHBr3",dsw_high<-dCHBr3_high,dsw_high<-dCH2Br2_high)
-	ifelse(compound=="CHBr3",dsw_low<-dCHBr3_low,dsw_low<-dCH2Br2_low)	
-	ifelse(highlow=="high",
-		rdsw<-rlnorm(n=100000,meanlog=dsw_high[[1]][[1]],sdlog=dsw_high[[1]][[2]]),
-		rdsw<-rlnorm(n=100000,meanlog=dsw_low[[1]][[1]],sdlog=dsw_low[[1]][[2]]))	
-	lh<-round(999*randomLHS(1000,k=5))+1
-	x<-data.frame(rdwind[lh[,1]])
+	#create a latin hypercube with numbers ranging from 1 to dist_n to sub-sample the distributions
+	lh<-round((dist_n-1)*randomLHS(lhc_n,k=5))+1
+	
+	#sort each random sample distribution and then subsample by indexing against lhc
+	x<-data.frame(sort(rdwind)[lh[,1]])
 	colnames(x)<-c("u")
-	x$S<-rdsal[lh[,2]]
-	x$T<-rdtemp[lh[,3]]
-	x$gconc<-rdgas[lh[,4]]
-	x$swconc<-rdsw[lh[,5]]
+	x$S<-sort(rdsal)[lh[,2]]
+	x$T<-sort(rdtemp)[lh[,3]]
+	x$gconc<-sort(rdcair)[lh[,4]]
+	x$swconc<-sort(rdcwater)[lh[,5]]
 	# Henry's law
 	x$KH<-KH(compound,x$T,x$S)
 	# delta C
@@ -94,17 +87,72 @@ randomsamplelhc<-function(compound){
 	x$Kw<-Kw(compound,x$T,x$u,x$S)
 	#flux
 	x$F<-x$Kw*x$dC
+	#return x	
 	x
 	
 }	
 
+repeatlhc<-function(compound, dist_n, lhc_n, repeatlhc_n, rdwind, rdsal, rdtemp, rdcair, rdcwater){
+	y<-randomsamplelhc(compound, dist_n, lhc_n, rdwind, rdsal, rdtemp, rdcair, rdcwater)	
+	for(i in c(1:repeatlhc_n-1)){
+		y<-rbind(y,randomsamplelhc(compound, dist_n, lhc_n, rdwind, rdsal, rdtemp, rdcair, rdcwater))
+		print(i)
+	}
+	y
+}
 
 
 calculate_pdf<-function(filename,compound,dist_n=10000,lhc_n=1000,repeatlhc_n=100,distlist=defaultdistlist){
 	#load data in 
 	dataset<-read.csv(filename, sep="\t", header=TRUE)
 	attach(dataset)
-	attributes
 	
 
+	#fit distributions to each data type and randomly sample them dist_n times 
+	winds<-na.omit(WindSpeed)
+	attributes(winds)<-NULL
+	dwind<-fitdistr(winds,distlist$WindSPeed)
+	rdwind<-ifelse(distlist$WindSpeed=="normal",
+			getndist_within_bounds(mean=dwind[[1]][[1]],sd=dwind[[1]][[2]],n=dist_n),
+			getlndist_within_bounds(meanlog=dwind[[1]][[1]],sdlog=dwind[[1]][[2]],n=dist_n)
+			)
+
+	sal<-na.omit(Salinity)
+	attributes(sal)<-NULL
+	dsal<-fitdistr(sal,distlist$Salinity)
+	rdsal<-ifelse(distlist$Salinity=="normal",
+			getndist_within_bounds(mean=dsal[[1]][[1]],sd=dsal[[1]][[2]],n=dist_n),
+			getlndist_within_bounds(meanlog=dsal[[1]][[1]],sdlog=dsal[[1]][[2]],n=dist_n)
+			)
+
+	temp<-na.omit(Temp)
+	attributes(temp)<-NULL
+	dtemp<-fitdistr(temp,distlist$Temperature)
+	rdtemp<-ifelse(distlist$Temperature=="normal",
+		getndist_within_bounds(mean=dtemp[[1]][[1]],sd=dtemp[[1]][[2]],n=dist_n),
+		getlndist_within_bounds(meanlog=dtemp[[1]][[1]],sdlog=dtemp[[1]][[2]],n=dist_n)
+		)
+
+
+	cair<-na.omit(C_air)
+	attributes(cair)<-NULL
+	dcair<-fitdistr(cair,distlist$C_air)	
+	rdcair<-ifelse(distlist$C_air=="normal",
+		getndist_within_bounds(mean=dcair[[1]][[1]],sd=dcair[[1]][[2]],n=dist_n),
+		getlndist_within_bounds(meanlog=dcair[[1]][[1]],sdlog=dcair[[1]][[2]],n=dist_n)
+		)
+
+	cwater<-na.omit(C_water)
+	attributes(cwater)<-NULL
+	dcwater<-fitdistr(cwater,distlist$C_water)
+	rdcwater<-ifelse(distlist$C_water=="normal",
+		getndist_within_bounds(mean=dcwater[[1]][[1]],sd=dcwater[[1]][[2]],n=dist_n),
+		getlndist_within_bounds(meanlog=dcwater[[1]][[1]],sdlog=dcwater[[1]][[2]],n=dist_n)
+		)
+
+
+	
+	pdfdata<-repeatlhc(compound, dist_n, lhc_n, repeatlhc_n, rdwind, rdsal, rdtemp, rdcair, rdcwater)
+
+	pdfdata
 }
